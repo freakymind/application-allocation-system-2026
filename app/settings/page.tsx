@@ -5,11 +5,12 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Settings2, Database, Bell, Shield, RefreshCw } from "lucide-react"
+import { Settings2, Database, Bell, Shield, RefreshCw, FileText } from "lucide-react"
 import { useApplications } from "@/contexts/application-context"
 import { useQueues } from "@/contexts/queue-context"
 import { useRules } from "@/contexts/rule-context"
 import { useAnalysts } from "@/contexts/analyst-context"
+import { DocumentationGenerator } from "@/components/documentation-generator"
 import { useState } from "react"
 
 export default function SettingsPage() {
@@ -102,6 +103,25 @@ export default function SettingsPage() {
                   </div>
                   <Switch defaultChecked />
                 </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-500/10 p-2">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Documentation</h3>
+                  <p className="text-sm text-muted-foreground">Export system documentation for your team</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <DocumentationGenerator />
+                <p className="text-xs text-muted-foreground">
+                  Generates a comprehensive HTML document with all screens, features, and technical specifications. 
+                  Open the downloaded file and use your browser's "Print to PDF" feature to create a shareable PDF.
+                </p>
               </div>
             </Card>
 
