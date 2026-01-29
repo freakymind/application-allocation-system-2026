@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import type { Application, Activity } from "@/lib/types"
+import type { Application, Activity, ApplicationStatus } from "@/lib/types"
 import { mockApplications } from "@/lib/mock-data"
 
 interface ApplicationContextType {
@@ -13,6 +13,8 @@ interface ApplicationContextType {
   getApplicationById: (id: string) => Application | undefined
   addActivity: (applicationId: string, activity: Omit<Activity, "id" | "timestamp">) => void
   reloadSampleData: () => void
+  claimApplication: (applicationId: string, analystId: string, analystName: string) => void
+  autoAssignQueue: (queueId: string, analystIds: string[], analystNames: Record<string, string>) => number
 }
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined)
@@ -168,6 +170,92 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
     localStorage.setItem("dataVersion", DATA_VERSION)
   }
 
+  // Analyst claims an application from the queue
+  const claimApplication = (applicationId: string, analystId: string, analystName: string) => {
+    const now = new Date().toISOString()
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== applicationId) return app
+        return {
+          ...app,
+          assignedAnalyst: analystId,
+          status: app.status === "pending" ? "in_progress" as ApplicationStatus : app.status,
+          activities: [
+            ...(app.activities || []),
+            {
+              id: `ACT-${Date.now()}-${app.activities?.length || 0}`,
+              type: "assigned_analyst" as const,
+              description: `Claimed by ${analystName}`,
+              user: analystName,
+              timestamp: now,
+            },
+          ],
+          updatedAt: now,
+        }
+      }),
+    )
+  }
+
+  // Auto-assign unassigned applications in a queue using round-robin
+  const autoAssignQueue = (
+    queueId: string,
+    analystIds: string[],
+    analystNames: Record<string, string>
+  ): number => {
+    if (analystIds.length === 0) return 0
+
+    const now = new Date().toISOString()
+    let assignedCount = 0
+
+    // Get unassigned applications in this queue, sorted by priority
+    const unassignedApps = applications
+      .filter((app) => app.assignedQueue === queueId && !app.assignedAnalyst)
+      .sort((a, b) => b.priority - a.priority)
+
+    // Count current workload for each analyst
+    const workloadCount: Record<string, number> = {}
+    analystIds.forEach((id) => {
+      workloadCount[id] = applications.filter(
+        (app) => app.assignedAnalyst === id && app.status !== "completed"
+      ).length
+    })
+
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.assignedQueue !== queueId || app.assignedAnalyst) return app
+
+        // Find analyst with lowest workload
+        const sortedAnalysts = [...analystIds].sort(
+          (a, b) => (workloadCount[a] || 0) - (workloadCount[b] || 0)
+        )
+        const selectedAnalyst = sortedAnalysts[0]
+
+        // Update workload count for next iteration
+        workloadCount[selectedAnalyst] = (workloadCount[selectedAnalyst] || 0) + 1
+        assignedCount++
+
+        return {
+          ...app,
+          assignedAnalyst: selectedAnalyst,
+          status: app.status === "pending" ? "in_progress" as ApplicationStatus : app.status,
+          activities: [
+            ...(app.activities || []),
+            {
+              id: `ACT-${Date.now()}-${app.activities?.length || 0}`,
+              type: "assigned_analyst" as const,
+              description: `Auto-assigned to ${analystNames[selectedAnalyst] || "Analyst"} (workload balancing)`,
+              user: "System",
+              timestamp: now,
+            },
+          ],
+          updatedAt: now,
+        }
+      }),
+    )
+
+    return assignedCount
+  }
+
   return (
     <ApplicationContext.Provider
       value={{
@@ -178,6 +266,8 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
         getApplicationById,
         addActivity,
         reloadSampleData,
+        claimApplication,
+        autoAssignQueue,
       }}
     >
       {children}

@@ -23,6 +23,8 @@ import {
   ArrowRight,
   Filter,
   Search,
+  Zap,
+  Sparkles,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
@@ -32,7 +34,7 @@ import type { Application } from "@/lib/types"
 export default function QueuesPage() {
   const { queues, updateQueue, deleteQueue } = useQueues()
   const { analysts, updateAnalyst } = useAnalysts()
-  const { applications, updateApplication, addActivity } = useApplications()
+  const { applications, updateApplication, addActivity, autoAssignQueue } = useApplications()
   const [showForm, setShowForm] = useState(false)
   const [expandedQueues, setExpandedQueues] = useState<string[]>([])
   const [selectedApps, setSelectedApps] = useState<Record<string, string[]>>({})
@@ -96,6 +98,20 @@ export default function QueuesPage() {
       }
     })
     setSelectedApps((prev) => ({ ...prev, [queueId]: [] }))
+  }
+
+  const handleAutoAssign = (queueId: string) => {
+    const queueAnalysts = analysts.filter((a) => a.queueIds.includes(queueId))
+    const analystNames: Record<string, string> = {}
+    queueAnalysts.forEach((a) => {
+      analystNames[a.id] = a.name
+    })
+    const count = autoAssignQueue(queueId, queueAnalysts.map((a) => a.id), analystNames)
+    if (count > 0) {
+      alert(`Successfully auto-assigned ${count} applications using workload balancing.`)
+    } else {
+      alert("No unassigned applications to distribute.")
+    }
   }
 
   const toggleAppSelection = (queueId: string, appId: string) => {
@@ -295,6 +311,22 @@ export default function QueuesPage() {
                             )}
                           </div>
                         </div>
+
+                        {/* Auto-Assign Button */}
+                        {unassignedCount > 0 && queueAnalysts.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAutoAssign(queue.id)
+                            }}
+                          >
+                            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                            Auto-Assign ({unassignedCount})
+                          </Button>
+                        )}
 
                         <Button
                           variant="ghost"
