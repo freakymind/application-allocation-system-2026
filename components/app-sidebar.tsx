@@ -3,10 +3,11 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, FileText, Settings, Users, Layers, BarChart3, Workflow, Briefcase } from "lucide-react"
+import { LayoutDashboard, FileText, Settings, Users, Layers, BarChart3, Workflow, Briefcase, PieChart } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Executive View", href: "/executive", icon: PieChart },
   { name: "My Work", href: "/my-work", icon: Briefcase },
   { name: "Applications", href: "/applications", icon: FileText },
   { name: "Rules Engine", href: "/rules", icon: Workflow },
