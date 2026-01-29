@@ -247,43 +247,58 @@ export default function MyWorkPage() {
                   </Card>
                 ) : (
                   availableApplications.map((app) => (
-                    <Card key={app.id} className="p-4 hover:shadow-md transition-shadow">
+                    <Card key={app.id} className="p-4 hover:shadow-md transition-shadow border-l-4" style={{ borderLeftColor: getQueueColor(app.assignedQueue) }}>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div
-                            className="h-10 w-1.5 rounded-full"
-                            style={{ backgroundColor: getQueueColor(app.assignedQueue) }}
-                          />
+                        <div className="flex items-center gap-4 flex-1">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mb-1">
                               <span className="font-semibold text-foreground">{app.reference}</span>
                               <Badge variant="outline" className={getPriorityColor(app.priority)}>
                                 P{app.priority}
                               </Badge>
+                              {app.isComplex && (
+                                <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
+                                  Complex
+                                </Badge>
+                              )}
+                              {app.isUKBased && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                                  UK
+                                </Badge>
+                              )}
                             </div>
-                            <div className="text-sm text-muted-foreground">{app.customerName}</div>
+                            <div className="text-sm text-foreground font-medium">{app.customerName}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {app.country} • {app.customerBehavior === "responsive" ? "Responsive" : app.customerBehavior === "slow" ? "Slow Response" : "Poor Response"}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right text-sm">
-                            <div className="text-muted-foreground">Queue</div>
-                            <div className="font-medium">{getQueueName(app.assignedQueue)}</div>
+                        <div className="flex items-center gap-4">
+                          <div className="grid grid-cols-5 gap-4 text-center">
+                            <div className="text-sm">
+                              <div className="text-xs text-muted-foreground">Queue</div>
+                              <div className="font-medium text-foreground">{getQueueName(app.assignedQueue)}</div>
+                            </div>
+                            <div className="text-sm">
+                              <div className="text-xs text-muted-foreground">KPs</div>
+                              <div className="font-medium text-foreground">{app.numberOfKP}</div>
+                            </div>
+                            <div className="text-sm">
+                              <div className="text-xs text-muted-foreground">Docs</div>
+                              <div className="font-medium text-foreground">{app.numberOfDocuments}</div>
+                            </div>
+                            <div className="text-sm">
+                              <div className="text-xs text-muted-foreground">Amount</div>
+                              <div className="font-medium text-foreground">£{(app.cashAmount / 1000).toFixed(0)}K</div>
+                            </div>
+                            <div className="text-sm">
+                              <div className="text-xs text-muted-foreground">Age</div>
+                              <div className="font-medium text-foreground">{Math.floor((Date.now() - new Date(app.createdAt).getTime()) / 86400000)}d</div>
+                            </div>
                           </div>
-                          <div className="text-right text-sm">
-                            <div className="text-muted-foreground">KPs</div>
-                            <div className="font-medium">{app.numberOfKP}</div>
-                          </div>
-                          <div className="text-right text-sm">
-                            <div className="text-muted-foreground">Docs</div>
-                            <div className="font-medium">{app.numberOfDocuments}</div>
-                          </div>
-                          <div className="text-right text-sm">
-                            <div className="text-muted-foreground">Country</div>
-                            <div className="font-medium">{app.country}</div>
-                          </div>
-                          <Button onClick={() => handleClaim(app)} className="bg-primary hover:bg-primary/90">
+                          <Button onClick={() => handleClaim(app)} className="bg-primary hover:bg-primary/90 ml-4">
                             <HandMetal className="mr-2 h-4 w-4" />
-                            Claim Case
+                            Claim
                           </Button>
                         </div>
                       </div>
