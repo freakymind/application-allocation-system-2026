@@ -19,7 +19,7 @@ interface ApplicationContextType {
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined)
 
-const DATA_VERSION = "v3" // Increment this to force reload sample data
+const DATA_VERSION = "v4" // Increment this to force reload sample data
 
 export function ApplicationProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = useState<Application[]>([])

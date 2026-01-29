@@ -14,7 +14,7 @@ interface AnalystContextType {
 
 const AnalystContext = createContext<AnalystContextType | undefined>(undefined)
 
-const ANALYST_DATA_VERSION = "v3"
+const ANALYST_DATA_VERSION = "v4"
 
 export function AnalystProvider({ children }: { children: React.ReactNode }) {
   const [analysts, setAnalysts] = useState<Analyst[]>([])
