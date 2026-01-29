@@ -9,19 +9,10 @@ import { useQueues } from "@/contexts/queue-context"
 import { useAnalysts } from "@/contexts/analyst-context"
 import { FileText, Layers, Users, Clock, TrendingUp, AlertCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useEffect } from "react"
-
 export default function DashboardPage() {
   const { applications } = useApplications()
   const { queues } = useQueues()
   const { analysts } = useAnalysts()
-
-  useEffect(() => {
-    console.log("[v0] Dashboard loaded")
-    console.log("[v0] Applications count:", applications.length)
-    console.log("[v0] Queues count:", queues.length)
-    console.log("[v0] Analysts count:", analysts.length)
-  }, [applications, queues, analysts])
 
   const pendingApplications = applications.filter((app) => app.status === "pending")
   const assignedApplications = applications.filter((app) => app.status === "assigned")
