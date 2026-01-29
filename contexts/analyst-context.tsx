@@ -14,15 +14,21 @@ interface AnalystContextType {
 
 const AnalystContext = createContext<AnalystContextType | undefined>(undefined)
 
+const ANALYST_DATA_VERSION = "v4"
+
 export function AnalystProvider({ children }: { children: React.ReactNode }) {
   const [analysts, setAnalysts] = useState<Analyst[]>([])
 
   useEffect(() => {
     const stored = localStorage.getItem("analysts")
-    if (stored) {
-      setAnalysts(JSON.parse(stored))
-    } else {
+    const storedVersion = localStorage.getItem("analystDataVersion")
+    
+    if (!stored || storedVersion !== ANALYST_DATA_VERSION) {
       setAnalysts(mockAnalysts)
+      localStorage.setItem("analysts", JSON.stringify(mockAnalysts))
+      localStorage.setItem("analystDataVersion", ANALYST_DATA_VERSION)
+    } else {
+      setAnalysts(JSON.parse(stored))
     }
   }, [])
 
