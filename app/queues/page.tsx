@@ -9,6 +9,9 @@ import { useQueues } from "@/contexts/queue-context"
 import { useAnalysts } from "@/contexts/analyst-context"
 import { useApplications } from "@/contexts/application-context"
 import { QueueForm } from "@/components/queue-form"
+import { CaseMetricsBadge } from "@/components/case-metrics-badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { differenceInHours } from "date-fns"
 import {
   Plus,
   Users,
@@ -210,15 +213,34 @@ export default function QueuesPage() {
                 const searchTerm = searchTerms[queue.id] || ""
                 const statusFilter = statusFilters[queue.id] || "all"
 
-                // Filter applications
-                const filteredApps = queueApplications.filter((app) => {
-                  const matchesSearch =
-                    !searchTerm ||
-                    app.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    app.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-                  const matchesStatus = statusFilter === "all" || app.status === statusFilter
-                  return matchesSearch && matchesStatus
+                // Categorize into new and old cases
+                const newCases = queueApplications.filter((app) => {
+                  const firstAssignedTime = app.firstAssignedAt ? new Date(app.firstAssignedAt) : null
+                  const hoursSinceAssignment = firstAssignedTime ? differenceInHours(new Date(), firstAssignedTime) : 0
+                  return !app.assignedAnalyst || hoursSinceAssignment < 24
                 })
+
+                const oldCases = queueApplications.filter((app) => {
+                  const firstAssignedTime = app.firstAssignedAt ? new Date(app.firstAssignedAt) : null
+                  const hoursSinceAssignment = firstAssignedTime ? differenceInHours(new Date(), firstAssignedTime) : 0
+                  return app.firstAssignedAt && hoursSinceAssignment >= 24
+                })
+
+                // Filter applications by search and status
+                const filterApps = (apps: Application[]) => {
+                  return apps.filter((app) => {
+                    const matchesSearch =
+                      !searchTerm ||
+                      app.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      app.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+                    const matchesStatus = statusFilter === "all" || app.status === statusFilter
+                    return matchesSearch && matchesStatus
+                  })
+                }
+
+                const filteredNewCases = filterApps(newCases)
+                const filteredOldCases = filterApps(oldCases)
+                const filteredApps = [...filteredNewCases, ...filteredOldCases]
 
                 // Stats
                 const unassignedCount = queueApplications.filter((a) => !a.assignedAnalyst).length
@@ -429,42 +451,63 @@ export default function QueuesPage() {
                           </Select>
                         </div>
 
-                        {/* Applications Table */}
-                        <div className="max-h-[500px] overflow-auto">
-                          <table className="w-full text-sm">
-                            <thead className="sticky top-0 bg-card border-b border-border">
-                              <tr className="text-left text-xs text-muted-foreground">
-                                <th className="w-10 p-3">
-                                  <Checkbox
-                                    checked={
-                                      filteredApps.length > 0 &&
-                                      filteredApps.every((app) => queueSelectedApps.includes(app.id))
-                                    }
-                                    onCheckedChange={() => selectAllInQueue(queue.id, filteredApps)}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </th>
-                                <th className="p-3 font-medium">Reference</th>
-                                <th className="p-3 font-medium">Customer</th>
-                                <th className="p-3 font-medium">Country</th>
-                                <th className="p-3 font-medium text-center">KP</th>
-                                <th className="p-3 font-medium text-center">Docs</th>
-                                <th className="p-3 font-medium text-right">Amount</th>
-                                <th className="p-3 font-medium text-center">Priority</th>
-                                <th className="p-3 font-medium">Status</th>
-                                <th className="p-3 font-medium">Stage</th>
-                                <th className="p-3 font-medium w-48">Assigned To</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {filteredApps.length === 0 ? (
-                                <tr>
-                                  <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                                    No applications in this queue
-                                  </td>
-                                </tr>
-                              ) : (
-                                filteredApps.map((app) => {
+                        {/* Applications Table with Tabs */}
+                        <Tabs defaultValue="all" className="w-full">
+                          <TabsList className="w-full justify-start border-b border-border rounded-none bg-muted/30 px-4">
+                            <TabsTrigger value="all" className="data-[state=active]:bg-background">
+                              All Cases ({filteredApps.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="new" className="data-[state=active]:bg-background">
+                              New Cases ({filteredNewCases.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="old" className="data-[state=active]:bg-background">
+                              Old Cases ({filteredOldCases.length})
+                            </TabsTrigger>
+                          </TabsList>
+
+                          {["all", "new", "old"].map((tabValue) => {
+                            const displayApps = 
+                              tabValue === "new" ? filteredNewCases :
+                              tabValue === "old" ? filteredOldCases :
+                              filteredApps
+
+                            return (
+                              <TabsContent key={tabValue} value={tabValue} className="m-0">
+                                <div className="max-h-[500px] overflow-auto">
+                                  <table className="w-full text-sm">
+                                    <thead className="sticky top-0 bg-card border-b border-border">
+                                      <tr className="text-left text-xs text-muted-foreground">
+                                        <th className="w-10 p-3">
+                                          <Checkbox
+                                            checked={
+                                              displayApps.length > 0 &&
+                                              displayApps.every((app) => queueSelectedApps.includes(app.id))
+                                            }
+                                            onCheckedChange={() => selectAllInQueue(queue.id, displayApps)}
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
+                                        </th>
+                                        <th className="p-3 font-medium">Reference</th>
+                                        <th className="p-3 font-medium">Customer</th>
+                                        <th className="p-3 font-medium">Country</th>
+                                        <th className="p-3 font-medium text-center">KP</th>
+                                        <th className="p-3 font-medium text-center">Docs</th>
+                                        <th className="p-3 font-medium text-right">Amount</th>
+                                        <th className="p-3 font-medium text-center">Priority</th>
+                                        <th className="p-3 font-medium">Metrics</th>
+                                        <th className="p-3 font-medium">Status</th>
+                                        <th className="p-3 font-medium w-48">Assigned To</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {displayApps.length === 0 ? (
+                                        <tr>
+                                          <td colSpan={11} className="p-8 text-center text-muted-foreground">
+                                            No applications in this {tabValue === "all" ? "queue" : tabValue + " cases"}
+                                          </td>
+                                        </tr>
+                                      ) : (
+                                        displayApps.map((app) => {
                                   const assignedAnalyst = analysts.find((a) => a.id === app.assignedAnalyst)
                                   return (
                                     <tr
@@ -517,6 +560,9 @@ export default function QueuesPage() {
                                         </span>
                                       </td>
                                       <td className="p-3">
+                                        <CaseMetricsBadge application={app} />
+                                      </td>
+                                      <td className="p-3">
                                         <Badge
                                           variant="outline"
                                           className={`text-[10px] ${getStatusColor(app.status)}`}
@@ -524,11 +570,6 @@ export default function QueuesPage() {
                                           <span className="mr-1">{getStatusIcon(app.status)}</span>
                                           {app.status.replace("_", " ")}
                                         </Badge>
-                                      </td>
-                                      <td className="p-3">
-                                        <span className="text-xs text-muted-foreground capitalize">
-                                          {app.stage?.replace("_", " ") || "Initial"}
-                                        </span>
                                       </td>
                                       <td className="p-3" onClick={(e) => e.stopPropagation()}>
                                         <Select
@@ -558,19 +599,25 @@ export default function QueuesPage() {
                                         </Select>
                                       </td>
                                     </tr>
-                                  )
-                                })
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                          )
+                                        })
+                                      )}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </TabsContent>
+                            )
+                          })}
+                        </Tabs>
 
                         {/* Queue Analysts Footer */}
                         <div className="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-3">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span>
-                              Showing {filteredApps.length} of {queueApplications.length} applications
+                              Total: {queueApplications.length} applications
                             </span>
+                            <span className="text-emerald-600">New: {newCases.length}</span>
+                            <span className="text-amber-600">Old: {oldCases.length}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground mr-2">Queue Analysts:</span>

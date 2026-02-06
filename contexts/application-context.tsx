@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import type { Application, Activity, ApplicationStatus } from "@/lib/types"
+import type { Application, Activity, ApplicationStatus, AssignmentHistoryEntry } from "@/lib/types"
 import { mockApplications } from "@/lib/mock-data"
 
 interface ApplicationContextType {
@@ -15,11 +15,12 @@ interface ApplicationContextType {
   reloadSampleData: () => void
   claimApplication: (applicationId: string, analystId: string, analystName: string) => void
   autoAssignQueue: (queueId: string, analystIds: string[], analystNames: Record<string, string>) => number
+  returnToQueue: (applicationId: string, analystName: string) => void
 }
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined)
 
-const DATA_VERSION = "v4" // Increment this to force reload sample data
+const DATA_VERSION = "v5" // Increment this to force reload sample data
 
 export function ApplicationProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = useState<Application[]>([])
@@ -37,6 +38,9 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
           timestamp: app.createdAt,
         },
       ],
+      assignmentHistory: [],
+      firstAssignedAt: app.assignedAnalyst ? app.createdAt : null,
+      returnedToQueueCount: 0,
     }))
     return appsWithActivities
   }
@@ -80,6 +84,9 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
           timestamp: now,
         },
       ],
+      assignmentHistory: [],
+      firstAssignedAt: null,
+      returnedToQueueCount: 0,
     }
     setApplications((prev) => [...prev, newApp])
   }
@@ -91,6 +98,8 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
 
         const now = new Date().toISOString()
         const newActivities = [...(app.activities || [])]
+        const newAssignmentHistory = [...(app.assignmentHistory || [])]
+        let firstAssignedAt = app.firstAssignedAt
 
         // Auto-track queue assignment
         if (updates.assignedQueue && updates.assignedQueue !== app.assignedQueue) {
@@ -101,17 +110,56 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
             user: "Manager",
             timestamp: now,
           })
+          newAssignmentHistory.push({
+            id: `HIST-${Date.now()}-${newAssignmentHistory.length}`,
+            timestamp: now,
+            assignedBy: "Manager",
+            queueId: updates.assignedQueue,
+            analystId: app.assignedAnalyst,
+            action: "assigned_to_queue",
+          })
         }
 
         // Auto-track analyst assignment
-        if (updates.assignedAnalyst && updates.assignedAnalyst !== app.assignedAnalyst) {
-          newActivities.push({
-            id: `ACT-${Date.now()}-${newActivities.length}`,
-            type: "assigned_analyst",
-            description: `Assigned to analyst`,
-            user: "Manager",
-            timestamp: now,
-          })
+        if (updates.assignedAnalyst !== undefined && updates.assignedAnalyst !== app.assignedAnalyst) {
+          if (updates.assignedAnalyst && !app.assignedAnalyst) {
+            // First assignment
+            newActivities.push({
+              id: `ACT-${Date.now()}-${newActivities.length}`,
+              type: "assigned_analyst",
+              description: `Assigned to analyst`,
+              user: "Manager",
+              timestamp: now,
+            })
+            newAssignmentHistory.push({
+              id: `HIST-${Date.now()}-${newAssignmentHistory.length}`,
+              timestamp: now,
+              assignedBy: "Manager",
+              queueId: app.assignedQueue,
+              analystId: updates.assignedAnalyst,
+              action: "assigned_to_analyst",
+            })
+            if (!firstAssignedAt) {
+              firstAssignedAt = now
+            }
+          } else if (updates.assignedAnalyst && app.assignedAnalyst) {
+            // Reassignment
+            newActivities.push({
+              id: `ACT-${Date.now()}-${newActivities.length}`,
+              type: "assigned_analyst",
+              description: `Reassigned to different analyst`,
+              user: "Manager",
+              timestamp: now,
+            })
+            newAssignmentHistory.push({
+              id: `HIST-${Date.now()}-${newAssignmentHistory.length}`,
+              timestamp: now,
+              assignedBy: "Manager",
+              queueId: app.assignedQueue,
+              analystId: updates.assignedAnalyst,
+              action: "reassigned_to_analyst",
+            })
+          }
         }
 
         // Auto-track status changes
@@ -129,6 +177,8 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
           ...app,
           ...updates,
           activities: newActivities,
+          assignmentHistory: newAssignmentHistory,
+          firstAssignedAt,
           updatedAt: now,
         }
       }),
@@ -256,6 +306,44 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
     return assignedCount
   }
 
+  // Return application to queue (remove analyst assignment)
+  const returnToQueue = (applicationId: string, analystName: string) => {
+    const now = new Date().toISOString()
+    setApplications((prev) =>
+      prev.map((app) => {
+        if (app.id !== applicationId) return app
+        return {
+          ...app,
+          assignedAnalyst: null,
+          status: "pending" as ApplicationStatus,
+          returnedToQueueCount: (app.returnedToQueueCount || 0) + 1,
+          activities: [
+            ...(app.activities || []),
+            {
+              id: `ACT-${Date.now()}-${app.activities?.length || 0}`,
+              type: "returned_to_queue" as const,
+              description: `Returned to queue by ${analystName}`,
+              user: analystName,
+              timestamp: now,
+            },
+          ],
+          assignmentHistory: [
+            ...(app.assignmentHistory || []),
+            {
+              id: `HIST-${Date.now()}-${app.assignmentHistory?.length || 0}`,
+              timestamp: now,
+              assignedBy: analystName,
+              queueId: app.assignedQueue,
+              analystId: null,
+              action: "returned_to_queue" as const,
+            },
+          ],
+          updatedAt: now,
+        }
+      }),
+    )
+  }
+
   return (
     <ApplicationContext.Provider
       value={{
@@ -268,6 +356,7 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
         reloadSampleData,
         claimApplication,
         autoAssignQueue,
+        returnToQueue,
       }}
     >
       {children}

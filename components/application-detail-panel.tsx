@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Play,
   Pause,
+  RotateCcw,
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
@@ -30,7 +31,7 @@ interface ApplicationDetailPanelProps {
 }
 
 export function ApplicationDetailPanel({ application, onClose }: ApplicationDetailPanelProps) {
-  const { addActivity } = useApplications()
+  const { addActivity, returnToQueue } = useApplications()
   const { queues } = useQueues()
   const { analysts } = useAnalysts()
   const [note, setNote] = useState("")
@@ -48,6 +49,13 @@ export function ApplicationDetailPanel({ application, onClose }: ApplicationDeta
       user: "Current User",
     })
     setNote("")
+  }
+
+  const handleReturnToQueue = () => {
+    if (window.confirm("Are you sure you want to return this application to the queue?")) {
+      returnToQueue(application.id, analyst?.name || "Analyst")
+      onClose()
+    }
   }
 
   const getStatusIcon = (status: string) => {
@@ -201,6 +209,18 @@ export function ApplicationDetailPanel({ application, onClose }: ApplicationDeta
               )}
 
               {!queue && !analyst && <p className="text-sm text-muted-foreground">Not assigned yet</p>}
+
+              {analyst && queue && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReturnToQueue}
+                  className="w-full mt-2 border-amber-500/50 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                >
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                  Return to Queue
+                </Button>
+              )}
             </div>
           </div>
 

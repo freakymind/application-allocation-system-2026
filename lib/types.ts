@@ -2,6 +2,15 @@ export type ApplicationStatus = "pending" | "assigned" | "in-progress" | "comple
 export type CustomerBehavior = "responsive" | "slow" | "poor" | "excellent"
 export type UserRole = "admin" | "manager" | "analyst" | "viewer"
 
+export interface AssignmentHistoryEntry {
+  id: string
+  timestamp: string
+  assignedBy: string
+  queueId: string | null
+  analystId: string | null
+  action: "assigned_to_queue" | "assigned_to_analyst" | "reassigned_to_analyst" | "returned_to_queue"
+}
+
 export interface Application {
   id: string
   reference: string
@@ -22,11 +31,14 @@ export interface Application {
   createdAt: string
   updatedAt: string
   activities: Activity[] // Added activity timeline to track application progress
+  assignmentHistory: AssignmentHistoryEntry[] // Track all assignment/reassignment/return events
+  firstAssignedAt: string | null // Track when first assigned to calculate aging
+  returnedToQueueCount: number // Track how many times returned to queue
 }
 
 export interface Activity {
   id: string
-  type: "created" | "assigned_queue" | "assigned_analyst" | "status_changed" | "priority_updated" | "note_added"
+  type: "created" | "assigned_queue" | "assigned_analyst" | "status_changed" | "priority_updated" | "note_added" | "returned_to_queue"
   description: string
   user: string
   timestamp: string
