@@ -20,14 +20,14 @@ interface ApplicationContextType {
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined)
 
-const DATA_VERSION = "v5" // Increment this to force reload sample data
+const DATA_VERSION = "v6" // Increment this to force reload sample data
 
 export function ApplicationProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = useState<Application[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
 
-  const loadSampleData = () => {
-    const appsWithActivities = mockApplications.map((app) => ({
+  const migrateApplication = (app: any): Application => {
+    return {
       ...app,
       activities: app.activities || [
         {
@@ -38,10 +38,14 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
           timestamp: app.createdAt,
         },
       ],
-      assignmentHistory: [],
-      firstAssignedAt: app.assignedAnalyst ? app.createdAt : null,
-      returnedToQueueCount: 0,
-    }))
+      assignmentHistory: app.assignmentHistory || [],
+      firstAssignedAt: app.firstAssignedAt || (app.assignedAnalyst ? app.createdAt : null),
+      returnedToQueueCount: app.returnedToQueueCount || 0,
+    }
+  }
+
+  const loadSampleData = () => {
+    const appsWithActivities = mockApplications.map((app) => migrateApplication(app))
     return appsWithActivities
   }
 
@@ -57,7 +61,10 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
       localStorage.setItem("applications", JSON.stringify(freshData))
       localStorage.setItem("dataVersion", DATA_VERSION)
     } else {
-      setApplications(JSON.parse(stored))
+      // Migrate existing data to ensure new fields exist
+      const parsedData = JSON.parse(stored)
+      const migratedData = parsedData.map((app: any) => migrateApplication(app))
+      setApplications(migratedData)
     }
     setIsLoaded(true)
   }, [])
