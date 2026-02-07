@@ -511,7 +511,7 @@ export default function QueuesPage() {
                                   const assignedAnalyst = analysts.find((a) => a.id === app.assignedAnalyst)
                                   return (
                                     <tr
-                                      key={app.id}
+                                      key={`${tabValue}-${app.id}`}
                                       className={`border-b border-border/50 hover:bg-muted/50 transition-colors ${
                                         queueSelectedApps.includes(app.id) ? "bg-primary/5" : ""
                                       }`}
