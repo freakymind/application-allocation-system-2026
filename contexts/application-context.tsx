@@ -20,7 +20,7 @@ interface ApplicationContextType {
 
 const ApplicationContext = createContext<ApplicationContextType | undefined>(undefined)
 
-const DATA_VERSION = "v6" // Increment this to force reload sample data
+const DATA_VERSION = "v6-assignment-tracking" // Increment this to force reload sample data
 
 export function ApplicationProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = useState<Application[]>([])
@@ -53,15 +53,24 @@ export function ApplicationProvider({ children }: { children: React.ReactNode })
     const stored = localStorage.getItem("applications")
     const storedVersion = localStorage.getItem("dataVersion")
     
+    console.log("[v0] Data version check - stored:", storedVersion, "current:", DATA_VERSION)
+    
     // Force reload if version changed or no data
     if (!stored || storedVersion !== DATA_VERSION) {
       console.log("[v0] Loading fresh sample data - version:", DATA_VERSION)
       const freshData = loadSampleData()
+      console.log("[v0] Fresh data loaded, sample app:", freshData[0] ? {
+        id: freshData[0].id,
+        hasAssignmentHistory: !!freshData[0].assignmentHistory,
+        hasFirstAssignedAt: freshData[0].firstAssignedAt !== undefined,
+        hasReturnCount: freshData[0].returnedToQueueCount !== undefined
+      } : "No data")
       setApplications(freshData)
       localStorage.setItem("applications", JSON.stringify(freshData))
       localStorage.setItem("dataVersion", DATA_VERSION)
     } else {
       // Migrate existing data to ensure new fields exist
+      console.log("[v0] Migrating existing data")
       const parsedData = JSON.parse(stored)
       const migratedData = parsedData.map((app: any) => migrateApplication(app))
       setApplications(migratedData)

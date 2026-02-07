@@ -11,16 +11,17 @@ export function CaseMetricsBadge({ application }: CaseMetricsBadgeProps) {
   // Calculate aging (days since creation)
   const agingDays = differenceInDays(new Date(), new Date(application.createdAt))
   
-  // Calculate assignment counts from history
-  const assignCount = application.assignmentHistory?.filter(
+  // Calculate assignment counts from history with safe fallbacks
+  const history = application.assignmentHistory || []
+  const assignCount = history.filter(
     h => h.action === "assigned_to_analyst"
-  ).length || 0
+  ).length
   
-  const reassignCount = application.assignmentHistory?.filter(
+  const reassignCount = history.filter(
     h => h.action === "reassigned_to_analyst"
-  ).length || 0
+  ).length
   
-  const returnCount = application.returnedToQueueCount || 0
+  const returnCount = application.returnedToQueueCount ?? 0
 
   // Color coding for aging
   const getAgingColor = (days: number) => {
