@@ -10,7 +10,6 @@ import { useApplications } from "@/contexts/application-context"
 import { useQueues } from "@/contexts/queue-context"
 import { useRules } from "@/contexts/rule-context"
 import { useAnalysts } from "@/contexts/analyst-context"
-import { DocumentationGenerator } from "@/components/documentation-generator"
 import { useState } from "react"
 
 export default function SettingsPage() {
@@ -117,10 +116,12 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                <DocumentationGenerator />
+                <Button variant="outline" className="w-full justify-start bg-transparent">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Generate Documentation
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Generates a comprehensive HTML document with all screens, features, and technical specifications. 
-                  Open the downloaded file and use your browser's "Print to PDF" feature to create a shareable PDF.
+                  Export a comprehensive document with all screens, features, and technical specifications.
                 </p>
               </div>
             </Card>
